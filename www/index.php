@@ -33,7 +33,6 @@
     }
     echo '</table>';
 
-
     $result->close();
 
     mysqli_close($conn);
