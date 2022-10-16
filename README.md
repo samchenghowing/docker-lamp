@@ -2,6 +2,7 @@
 
 Docker example with Apache, MySql 8.0, PhpMyAdmin and Php
 
+First, create the docker-compose file (e.g. similar to the one in /ref folder).
 
 To run these containers:
 
