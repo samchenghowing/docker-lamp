@@ -10,7 +10,7 @@ CREATE TABLE Patients (
   contact_information VARCHAR(255) NOT NULL,
   insurance_details VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL,
-  password VARCHAR(255) NOT NULL
+  pwHash VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Tests_Catalog (
@@ -63,10 +63,10 @@ CREATE TABLE Staff (
   role VARCHAR(255) NOT NULL,
   contact_information VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL,
-  password VARCHAR(255) NOT NULL
+  pwHash VARCHAR(255) NOT NULL
 );
 
-INSERT INTO `Patients` (`name`, `date_of_birth`, `contact_information`, `insurance_details`, `username`, `password`) VALUES
+INSERT INTO `Patients` (`name`, `date_of_birth`, `contact_information`, `insurance_details`, `username`, `pwHash`) VALUES
 ('John Doe', '1990-05-15', 'john@example.com', 'Insurance Company A', 'john_doe', 'password123'),
 ('Jane Smith', '1985-12-10', 'jane@example.com', 'Insurance Company B', 'jane_smith', 'pass1234'),
 ('Michael Johnson', '1978-09-20', 'michael@example.com', 'Insurance Company C', 'michael_j', 'pass5678');
@@ -96,7 +96,7 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 (2, 50.00, 'Paid', 'Claimed'),
 (3, 80.00, 'Pending', 'Not Claimed');
 
-INSERT INTO Staff (name, role, contact_information, username, password) VALUES
+INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
 ('Dr. X', 'Physician', 'drx@example.com', 'dr_x', 'pass4321'),
 ('Dr. Y', 'Pathologist', 'dry@example.com', 'dr_y', 'pass5678'),
 ('Dr. Z', 'Pathologist', 'drz@example.com', 'dr_z', 'pass9876');

@@ -36,11 +36,11 @@ def get_db_connection():
 def checkpassword(name, password):
     conn = get_db_connection()
     if conn and conn.is_connected():
-        with conn.cursor(prepared=True) as cursor:
+        with conn.cursor(prepared=True, dictionary=True) as cursor:
             # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
             stmt = "SELECT * FROM Patients where username = %s"
             cursor.execute(stmt) # prepare the statement
-            cursor.execute(stmt, name) # execute the prepared statement
+            cursor.execute(stmt, (name,)) # execute the prepared statement
             user = cursor.fetchall()
     conn.close()
 
@@ -79,6 +79,29 @@ def get_users():
             users = cursor.fetchall()
     conn.close()
     return users, 200
+@app.route('/api/signup', methods=['POST'])
+@cross_origin()
+def signup():
+    json_data = request.get_json()
+    name = json_data['name']
+    password = json_data['pwHash']
+    # check if user exist in database
+    conn = get_db_connection()
+    sql_select_query = """select * from users where name = ?"""
+    res = conn.execute(sql_select_query, (name,)).fetchone()
+    if res is not None:
+        json_data = {"signup":False, "status": "User alreafy exist in database!"}
+        return jsonify(json_data), 200
+    # TO-DO: email verify
+    hash = generate_password_hash(password)
+    conn.execute("INSERT INTO users (name, pwHash, confirmed) VALUES (?, ?, ?)",
+                (name, hash, 0)
+                )
+    
+    conn.commit()
+    conn.close()
+    json_data = {"signup":True}
+    return jsonify(json_data), 200
 
 @app.route('/api/login', methods=['POST'])
 @cross_origin()
