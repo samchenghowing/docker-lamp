@@ -27,7 +27,7 @@
             <v-list density="compact" nav>
                 <div v-if=isLoggedIn>
                     <v-list-item prepend-icon="mdi-account-box" title="Account" v-on:click="isLoggedIn? $router.push('/account'):dialog=true"></v-list-item>
-                    <v-list-item prepend-icon="mdi-chat" title="Chat" v-on:click="isLoggedIn? $router.push('/chatPage'):dialog=true"></v-list-item>
+                    <v-list-item prepend-icon="mdi-chat" title="Results" v-on:click="isLoggedIn? $router.push('/chatPage'):dialog=true"></v-list-item>
                     <v-list-item prepend-icon="mdi-logout" title="Logout" v-on:click="logout"></v-list-item>
                 </div>
                 <div v-else>

@@ -3,156 +3,82 @@
     <v-container>
       <v-row>
         <v-col>
-          <h1>
-            Chat Room {{chatRoom}}          
-            <v-btn
-              @click="dialog = true"
-            >
-              Change chat room
-            </v-btn>
+          <h1> Results 
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn v-bind="props" class="mt-n2" @click="getUpdate">
+                  refresh
+                </v-btn>
+              </template>
+            </v-menu>
           </h1>
+          
 
-          <div class="message" v-for="message in messages" :key="message.sent">
-            <v-card
-              :title=message.name
-              :subtitle=message.sent
-              :text=message.content
-            ></v-card>
-          </div>
-          <v-text-field
-            v-model="messageText"
-            clearable
-            label="Message"
-            type="text"
-            variant="outlined"
-          >
-            <template v-slot:append>
-              <v-menu>
-                <template v-slot:activator="{ props }">
-                  <v-btn v-bind="props" class="mt-n2" @click="sendMessage">
-                    Send
-                    <v-icon icon="mdi-send" end></v-icon>
-                  </v-btn>
-                </template>
-              </v-menu>
-            </template>
-          </v-text-field>
+          <v-table>
+            <thead>
+              <tr>
+                <th class="text-left"> result_id </th>
+                <th class="text-left"> order_id </th>
+                <th class="text-left"> report_url </th>
+                <th class="text-left"> interpretation </th>
+                <th class="text-left"> reporting_pathologist </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="item in items"
+                :key="item.name"
+              >
+                <td>{{ item.result_id }}</td>
+                <td>{{ item.order_id }}</td>
+                <td>{{ item.report_url }}</td>
+                <td>{{ item.interpretation }}</td>
+                <td>{{ item.reporting_pathologist }}</td>
+              </tr>
+            </tbody>
+          </v-table>
         </v-col>
       </v-row>
     </v-container>
-        
-    <v-row justify="center">
-      <v-dialog
-        v-model="dialog"
-        persistent
-        width="auto"
-      >
-        <v-card>
-          <v-card-title class="text-h5">
-            Chatrooms
-          </v-card-title>
-          <v-card-text>Choose a chatroom to start chatting</v-card-text>
-
-          <v-combobox
-            v-model="chatRoom"
-            label="chatRoom"
-            :items="items"
-          >
-          </v-combobox>
-
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn
-              v-model="confirmButton"
-              :disabled="!items.length"
-              @click="dialog = false"
-            >
-              Confirm
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-    </v-row>
   </v-form>
 </template>
 
 <script>
 export default {
   mounted() {
-    this.timer = setInterval(() => {
-      this.getUpdate()
-    }, 2000)
+    this.getUpdate()
   },
   name: "ChatPage",
   data() {
     return {
       timer: null,
-      postID: 1,
       user: "",
-      messages: null,
       messageText: "",
-      dialog: true,
-      items: [1, 2, 3],
-      chatRoom: [],
+      dialog: false,
+      items: null,
     };
   },
   methods: {
-    sendMessage() {
-      if (this.messageText.trim() === "") {
-        return;
-      }
-      var obj = JSON.parse(sessionStorage.user)
-      var name = obj["User info"]["name"]
-      var userID = obj["User info"]["id"]
-      var pwHash = obj["User info"]["pwHash"]
-
-      var updateAPI = process.env.VUE_APP_API_URL + "/chat/send"
-      fetch(updateAPI, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          postId: this.postID,
-          userID: userID,
-          name: name,
-          pwHash: pwHash,
-          content: this.messageText,
-        })
-      })
-      .then((response) => response.json())
-      .then((post) => {
-        this.getUpdate()
-      })
-    },
-
     getUpdate(){
       var updateAPI = process.env.VUE_APP_API_URL + "/chat/getupdate"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
-      var userID = obj["User info"]["id"]
       var pwHash = obj["User info"]["pwHash"]
-      this.postID = this.chatRoom
-
+      
       fetch(updateAPI, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postId: this.postID,
-          userID: userID,
           name: name,
           pwHash: pwHash,
         })
       })
       .then((response) => response.json())
       .then((post) => {
-        this.messages = post
-        var obj = JSON.parse(sessionStorage.user)
-        var name = obj["User info"]["name"]
-        this.user = name
+        this.items = post
+        console.log(this.items)
       })
     },
-  },
-  beforeDestroy() {
-    clearInterval(this.timer)
   }
 };
 </script>

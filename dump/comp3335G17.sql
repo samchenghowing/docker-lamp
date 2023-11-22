@@ -67,9 +67,9 @@ CREATE TABLE Staff (
 );
 
 INSERT INTO `Patients` (`name`, `date_of_birth`, `contact_information`, `insurance_details`, `username`, `pwHash`) VALUES
-('John Doe', '1990-05-15', 'john@example.com', 'Insurance Company A', 'john_doe', 'password123'),
-('Jane Smith', '1985-12-10', 'jane@example.com', 'Insurance Company B', 'jane_smith', 'pass1234'),
-('Michael Johnson', '1978-09-20', 'michael@example.com', 'Insurance Company C', 'michael_j', 'pass5678');
+('John Doe', '1990-05-15', 'john@example.com', 'Insurance Company A', 'john_doe', 'pbkdf2:sha256:600000$2GQOX8fIBMPODxuL$237b5461860bcc8cee64b11e49f3b54eb9d0e5b4116b108e2765ffce0f593753'),
+('Jane Smith', '1985-12-10', 'jane@example.com', 'Insurance Company B', 'jane_smith', 'pbkdf2:sha256:600000$woyBKh5CUmAx7azh$9d8c951ca72e28b2d372cff2b8dd501c38e1e247f178d1bf49b0b3f004089ea9'),
+('Michael Johnson', '1978-09-20', 'michael@example.com', 'Insurance Company C', 'michael_j', 'pbkdf2:sha256:600000$ZoQIW7oqjx1bdDw7$091b7f9bf86a54ed905ffd75e586ff02dd56438cb8e1a1ad0d51d6eb95c34d63');
 
 INSERT INTO Tests_Catalog (test_code, name, description, cost) VALUES
 ('T001', 'Blood Test', 'Complete blood count and basic metabolic panel', 100.00),
@@ -97,6 +97,6 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 (3, 80.00, 'Pending', 'Not Claimed');
 
 INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
-('Dr. X', 'Physician', 'drx@example.com', 'dr_x', 'pass4321'),
-('Dr. Y', 'Pathologist', 'dry@example.com', 'dr_y', 'pass5678'),
-('Dr. Z', 'Pathologist', 'drz@example.com', 'dr_z', 'pass9876');
+('Dr. X', 'Physician', 'drx@example.com', 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
+('Dr. Y', 'Pathologist', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
+('Dr. Z', 'Pathologist', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');

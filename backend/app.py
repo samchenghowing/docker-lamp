@@ -36,12 +36,19 @@ def get_db_connection():
 def checkpassword(name, password):
     conn = get_db_connection()
     if conn and conn.is_connected():
-        with conn.cursor(prepared=True, dictionary=True) as cursor:
-            # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
-            stmt = "SELECT * FROM Patients where username = %s"
-            cursor.execute(stmt) # prepare the statement
-            cursor.execute(stmt, (name,)) # execute the prepared statement
+        cursor = conn.cursor(prepared=True, dictionary=True)
+        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
+        stmtP = "SELECT * FROM Patients where username = %s"
+        cursor.execute(stmtP) # prepare the statement
+        cursor.execute(stmtP, (name,)) # execute the prepared statement
+        user = cursor.fetchall()
+        isStaff = False
+        if user is None: # not Patient user
+            stmtS = "SELECT * FROM Staff where username = %s"
+            cursor.execute(stmtS) # prepare the statement
+            cursor.execute(stmtS, (name,)) # execute the prepared statement
             user = cursor.fetchall()
+            isStaff = True
     conn.close()
 
     if user is None:
@@ -50,13 +57,18 @@ def checkpassword(name, password):
                         "status": "User not exist in database!"}
         return json_data
 
-    hashedpw = user.get('pwHash')
+    for row in user:
+        hashedpw = row['pwHash']
+
     if check_password_hash(hashedpw, password):
         # update the format of hash before send to client
-        user["pwHash"] = password
-        IPDict[request.remote_addr].append(user.get('id'))
+        userDict = {}
+        userDict["pwHash"] = password
+        userDict["isStaff"] = isStaff
+        userDict["name"] = name
+        # IPDict[request.remote_addr].append(name)
         json_data = {"isvalid":True, "from client": request.remote_addr,
-                    "attempt count": IPDict[request.remote_addr][0], "User info": user}
+                    "User info": userDict}
         return json_data
     else:
         json_data = {"isvalid":False, "from client": request.remote_addr,
@@ -75,10 +87,11 @@ def get_users():
     conn = get_db_connection()
     if conn and conn.is_connected():
         with conn.cursor() as cursor:
-            result = cursor.execute("SELECT * FROM Patients")
+            cursor.execute("SELECT * FROM Patients")
             users = cursor.fetchall()
     conn.close()
     return users, 200
+
 @app.route('/api/signup', methods=['POST'])
 @cross_origin()
 def signup():
@@ -132,8 +145,8 @@ def login():
 @app.route('/api/chat/getupdate', methods=['POST'])
 @cross_origin()
 def getupdate():
+
     json_data = request.get_json()
-    postId = json_data['postId']
     name = json_data['name']
     password = json_data['pwHash']
 
@@ -142,11 +155,12 @@ def getupdate():
         return isVaildRequest, 200
 
     conn = get_db_connection()
-    sql_select_query = """select * from chat where postId = ?"""
-    chats = conn.execute(sql_select_query, (postId,)).fetchall()
+    if conn and conn.is_connected():
+        with conn.cursor(dictionary=True) as cursor:
+            cursor.execute("SELECT * FROM Results")
+            results = cursor.fetchall()
     conn.close()
-
-    return chats, 200
+    return jsonify(results), 200
 
 @app.route('/api/chat/send', methods=['POST'])
 @cross_origin()
