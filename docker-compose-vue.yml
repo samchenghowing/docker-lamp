@@ -21,7 +21,7 @@ services:
                         dockerfile: Dockerfile
                 container_name: pythonBackend
                 ports:
-                        - 15000:5000
+                        - 5000:5000
                 depends_on:
                         - db
         frontend:
@@ -30,11 +30,9 @@ services:
                         dockerfile: Dockerfile
                 container_name: vue_app_container
                 ports:
-                        - '8080:8080'
+                        - '8080:80'
                 volumes:
                         - ./frontend:/app
-                environment:
-                        - NODE_ENV=development
                 depends_on:
                         - backend
 
