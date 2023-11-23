@@ -27,7 +27,15 @@
             <v-list density="compact" nav>
                 <div v-if=isLoggedIn>
                     <v-list-item prepend-icon="mdi-account-box" title="Account" v-on:click="isLoggedIn? $router.push('/account'):dialog=true"></v-list-item>
-                    <v-list-item prepend-icon="mdi-chat" title="Results" v-on:click="isLoggedIn? $router.push('/chatPage'):dialog=true"></v-list-item>
+                    <div v-if="role == 'Secretaries'">
+                        <v-list-item prepend-icon="mdi-tool" title="Management" v-on:click="isLoggedIn? $router.push('/management'):dialog=true"></v-list-item>
+                    </div>
+                    <div v-if="role == 'Physician'">
+                        <v-list-item prepend-icon="mdi-calendar" title="Results" v-on:click="isLoggedIn? $router.push('/results'):dialog=true"></v-list-item>
+                    </div>
+                    <div v-if="role == ''">
+                        <v-list-item prepend-icon="mdi-tool" title="patients" v-on:click="isLoggedIn? $router.push('/patients'):dialog=true"></v-list-item>
+                    </div>
                     <v-list-item prepend-icon="mdi-logout" title="Logout" v-on:click="logout"></v-list-item>
                 </div>
                 <div v-else>
@@ -64,6 +72,7 @@ export default {
             this.isLoggedIn = event.detail.isAuth;
             var obj = JSON.parse(sessionStorage.user)
             this.UserName = obj["User info"]["name"]
+            this.role = obj["role"]
         });
     },
     data() {
@@ -72,6 +81,7 @@ export default {
             drawer: null,
             dialog: false,
             UserName: "Guest user",
+            role: ""
         }
     },
     methods:{

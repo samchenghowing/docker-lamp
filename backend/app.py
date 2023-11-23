@@ -43,7 +43,8 @@ def checkpassword(name, password):
         cursor.execute(stmtP, (name,)) # execute the prepared statement
         user = cursor.fetchall()
         isStaff = False
-        if user is None: # not Patient user
+        role = ""
+        if len(user) == 0: # not Patient user
             stmtS = "SELECT * FROM Staff where username = %s"
             cursor.execute(stmtS) # prepare the statement
             cursor.execute(stmtS, (name,)) # execute the prepared statement
@@ -59,6 +60,7 @@ def checkpassword(name, password):
 
     for row in user:
         hashedpw = row['pwHash']
+        if isStaff: role = row['role']
 
     if check_password_hash(hashedpw, password):
         # update the format of hash before send to client
@@ -66,9 +68,10 @@ def checkpassword(name, password):
         userDict["pwHash"] = password
         userDict["isStaff"] = isStaff
         userDict["name"] = name
+        userDict["role"] = role
         # IPDict[request.remote_addr].append(name)
         json_data = {"isvalid":True, "from client": request.remote_addr,
-                    "User info": userDict}
+                    "User info": userDict, "role": role}
         return json_data
     else:
         json_data = {"isvalid":False, "from client": request.remote_addr,
@@ -91,30 +94,6 @@ def get_users():
             users = cursor.fetchall()
     conn.close()
     return users, 200
-
-@app.route('/api/signup', methods=['POST'])
-@cross_origin()
-def signup():
-    json_data = request.get_json()
-    name = json_data['name']
-    password = json_data['pwHash']
-    # check if user exist in database
-    conn = get_db_connection()
-    sql_select_query = """select * from users where name = ?"""
-    res = conn.execute(sql_select_query, (name,)).fetchone()
-    if res is not None:
-        json_data = {"signup":False, "status": "User alreafy exist in database!"}
-        return jsonify(json_data), 200
-    # TO-DO: email verify
-    hash = generate_password_hash(password)
-    conn.execute("INSERT INTO users (name, pwHash, confirmed) VALUES (?, ?, ?)",
-                (name, hash, 0)
-                )
-    
-    conn.commit()
-    conn.close()
-    json_data = {"signup":True}
-    return jsonify(json_data), 200
 
 @app.route('/api/login', methods=['POST'])
 @cross_origin()
@@ -145,7 +124,6 @@ def login():
 @app.route('/api/chat/getupdate', methods=['POST'])
 @cross_origin()
 def getupdate():
-
     json_data = request.get_json()
     name = json_data['name']
     password = json_data['pwHash']
@@ -162,14 +140,14 @@ def getupdate():
     conn.close()
     return jsonify(results), 200
 
-@app.route('/api/chat/send', methods=['POST'])
+@app.route('/api/updateResult', methods=['POST'])
 @cross_origin()
-def chat():
+def updateResult():
+    # lab staff update result
+    # INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES
+    # (1, 'https://example.com/reports/1', 'Normal blood test results', 'Dr. Y'),
     json_data = request.get_json()
-    postId = json_data['postId']
-    userID = json_data['userID']
     name = json_data['name']
-    content = json_data['content']
     password = json_data['pwHash']
 
     isVaildRequest = checkpassword(name, password)
@@ -177,68 +155,12 @@ def chat():
         return isVaildRequest, 200
 
     conn = get_db_connection()
-    conn.execute("INSERT INTO chat (postId, userId, name, content) VALUES (?,?,?,?)",
-                (postId, userID, name, content)
-                )
-    conn.commit()
+    if conn and conn.is_connected():
+        with conn.cursor(dictionary=True) as cursor:
+            cursor.execute("SELECT * FROM Results")
+            results = cursor.fetchall()
     conn.close()
-    
-    json_data = {"send":True}
-    return jsonify(json_data), 200
-
-
-@app.route('/api/account/updateProfile', methods=['POST'])
-@cross_origin()
-def changePassword():
-    json_data = request.get_json()
-    userID = json_data['userID']
-    name = json_data['name']
-    oldpassword = json_data['oldpwHash']
-
-    newname = json_data['newname']
-    newemail = json_data['newemail']
-    newpassword = json_data['newpwHash']
-    isVaildRequest = checkpassword(name, oldpassword)
-    if isVaildRequest['isvalid'] == False:
-        return isVaildRequest, 200
-
-    hash = generate_password_hash(newpassword)
-    conn = get_db_connection()
-    conn.execute("UPDATE users SET name=?, email=?, pwHash=? WHERE id=?",
-                (newname, newemail, hash, userID)
-                )
-    conn.commit()
-    sql_select_query = """select * from users where name = ?"""
-    user = conn.execute(sql_select_query, (name,)).fetchone()
-    conn.close()
-    
-    user["pwHash"] = newpassword
-    json_data = {"isvalid":True, "from client": request.remote_addr,
-                "attempt count": IPDict[request.remote_addr][0], "User info": user}
-    return jsonify(json_data), 200
-
-@app.route('/api/account/deleteAccount', methods=['POST'])
-@cross_origin()
-def deleteAccount():
-    json_data = request.get_json()
-    userID = json_data['userID']
-    name = json_data['name']
-    pwHash = json_data['pwHash']
-
-    isVaildRequest = checkpassword(name, pwHash)
-    if isVaildRequest['isvalid'] == False:
-        return isVaildRequest, 200
-
-    conn = get_db_connection()
-    conn.execute("DELETE FROM users WHERE id=?",
-                (userID,)
-                )
-    conn.commit()
-    conn.close()
-    
-    json_data = {"isvalid":True, "from client": request.remote_addr,
-                "User info": "account deleted"}
-    return jsonify(json_data), 200
+    return jsonify(results), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=True)

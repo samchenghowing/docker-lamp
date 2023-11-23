@@ -98,5 +98,5 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 
 INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
 ('Dr. X', 'Physician', 'drx@example.com', 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
-('Dr. Y', 'Pathologist', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
-('Dr. Z', 'Pathologist', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
+('Dr. Y', 'Physician', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
+('Dr. Z', 'Secretaries', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');

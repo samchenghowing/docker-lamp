@@ -16,10 +16,10 @@ const routes = [
     meta: { requiresAuth: true }, // user must login before they can be route to this page
     component: () => import(/* webpackChunkName: "about" */ '../components/account.vue')
   }, {
-    path: '/chatPage',
-    name: 'chatPage',
+    path: '/results',
+    name: 'resultsPage',
     meta: { requiresAuth: true }, 
-    component: () => import(/* webpackChunkName: "about" */ '../components/chatPage.vue')
+    component: () => import(/* webpackChunkName: "about" */ '../components/results.vue')
   }, {
     path: '/login',
     name: 'loginPage',
@@ -28,6 +28,16 @@ const routes = [
     path: '/signup',
     name: 'signupPage',
     component: () => import(/* webpackChunkName: "about" */ '../components/signup.vue')
+  },{
+    path: '/management',
+    name: 'managementPage',
+    meta: { requiresAuth: true, requiresStaff: true }, 
+    component: () => import(/* webpackChunkName: "about" */ '../components/management.vue')
+  },{
+    path: '/patients',
+    name: 'PatientsPage',
+    meta: { requiresAuth: true }, 
+    component: () => import(/* webpackChunkName: "about" */ '../components/patients.vue')
   },
 ]
 
@@ -38,6 +48,15 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some((record) => record.meta.requiresAuth)) {
+    if (sessionStorage.getItem('isAuth') === 'true') {
+      next();
+      return;
+    }
+    next("/login");
+  } else {
+    next();
+  }
+  if (to.matched.some((record) => record.meta.requiresStaff)) {
     if (sessionStorage.getItem('isAuth') === 'true') {
       next();
       return;

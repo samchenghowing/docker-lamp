@@ -111,13 +111,16 @@ export default {
           // if is vaild user
           if (user.isvalid){
             sessionStorage.setItem('isAuth', 'true');
+            sessionStorage.setItem('role', user.role);
             sessionStorage.setItem('user', JSON.stringify(user));
             window.dispatchEvent(new CustomEvent('isAuth-changed', {
               detail: {
                 isAuth: sessionStorage.getItem('isAuth')
               }
             }));
-            this.$router.push('/chatPage')
+            if (user.role == '') this.$router.push('/patients')
+            else if (user.role == 'Secretaries') this.$router.push('/management')
+            else this.$router.push('/results')
           }
         })
       }
