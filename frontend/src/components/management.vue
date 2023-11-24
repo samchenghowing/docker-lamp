@@ -12,7 +12,6 @@
               </template>
             </v-menu>
           </h1>
-          
 
           <v-table>
             <thead>

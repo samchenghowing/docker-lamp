@@ -21,7 +21,7 @@ services:
                         dockerfile: Dockerfile
                 container_name: pythonBackend
                 ports:
-                        - 5000:5000
+                        - 15000:15000
                 depends_on:
                         - db
         frontend:
