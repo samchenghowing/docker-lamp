@@ -3,106 +3,59 @@
     <v-container>
       <v-row>
         <v-col>
-          <h1> Patients 
-            <v-menu>
-              <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" class="mt-n2" @click="getUpdate">
-                  refresh
-                </v-btn>
-              </template>
-            </v-menu>
-          </h1>
-          
-          <v-row justify="center">
-            <v-dialog
-              v-model="dialog"
-              persistent
-              width="1024"
+          <h1> Patients </h1>
+
+          <v-card>
+            <v-tabs
+              v-model="tab"
+              bg-color="primary"
             >
-              <template v-slot:activator="{ props }">
-                <v-btn
-                  color="primary"
-                  v-bind="props"
-                >
-                  Open Dialog
-                </v-btn>
-              </template>
-              <v-card>
-                <v-card-title>
-                  <span class="text-h5">User Profile</span>
-                </v-card-title>
-                <v-card-text>
-                  <v-container>
-                    <v-row>
-                      <v-col
-                        cols="12"
-                        sm="6"
-                        md="4"
+              <v-tab value="Orders">Orders</v-tab>
+              <v-tab value="Results">Results</v-tab>
+              <v-tab value="Billing">Billing</v-tab>
+            </v-tabs>
+
+            <v-card-text>
+              <v-window v-model="tab">
+                <v-window-item value="Orders">
+                  Orders
+
+                  <v-table>
+                    <thead>
+                      <tr>
+                        <th class="text-left"> order_date </th>
+                        <th class="text-left"> order_id </th>
+                        <th class="text-left"> ordering_physician </th>
+                        <th class="text-left"> status </th>
+                        <th class="text-left"> test_name </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="item in orders"
+                        :key="item.name"
                       >
-                        <v-text-field
-                          label="Legal last name*"
-                          hint="example of persistent helper text"
-                          persistent-hint
-                          required
-                        ></v-text-field>
-                      </v-col>
-                      <v-col cols="12">
-                        <v-text-field
-                          label="Email*"
-                          required
-                        ></v-text-field>
-                      </v-col>
-                      <v-col cols="12">
-                        <v-text-field
-                          label="Password*"
-                          type="password"
-                          required
-                        ></v-text-field>
-                      </v-col>
-                      <v-col
-                        cols="12"
-                        sm="6"
-                      >
-                        <v-select
-                          :items="['0-17', '18-29', '30-54', '54+']"
-                          label="Age*"
-                          required
-                        ></v-select>
-                      </v-col>
-                      <v-col
-                        cols="12"
-                        sm="6"
-                      >
-                        <v-autocomplete
-                          :items="['Skiing', 'Ice hockey', 'Soccer', 'Basketball', 'Hockey', 'Reading', 'Writing', 'Coding', 'Basejump']"
-                          label="Interests"
-                          multiple
-                        ></v-autocomplete>
-                      </v-col>
-                    </v-row>
-                  </v-container>
-                  <small>*indicates required field</small>
-                </v-card-text>
-                <v-card-actions>
-                  <v-spacer></v-spacer>
-                  <v-btn
-                    color="blue-darken-1"
-                    variant="text"
-                    @click="dialog = false"
-                  >
-                    Close
-                  </v-btn>
-                  <v-btn
-                    color="blue-darken-1"
-                    variant="text"
-                    @click="dialog = false"
-                  >
-                    Save
-                  </v-btn>
-                </v-card-actions>
-              </v-card>
-            </v-dialog>
-          </v-row>
+                        <td>{{ item.order_date }}</td>
+                        <td>{{ item.order_id }}</td>
+                        <td>{{ item.ordering_physician }}</td>
+                        <td>{{ item.status }}</td>
+                        <td>{{ item.test_name }}</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </v-window-item>
+
+                <v-window-item value="Results">
+                  Results
+                </v-window-item>
+
+                <v-window-item value="Billing">
+                  Billing
+                </v-window-item>
+              </v-window>
+            </v-card-text>
+          </v-card>
+          
         </v-col>
       </v-row>
     </v-container>
@@ -112,23 +65,20 @@
 <script>
 export default {
   mounted() {
-    this.getUpdate()
+    this.getOrder()
   },
-  name: "ChatPage",
   data() {
     return {
-      timer: null,
-      user: "",
-      messageText: "",
-      dialog: false,
-      items: null,
+      tab: null,
+      orders: null,
     };
   },
   methods: {
-    getUpdate(){
-      var updateAPI = process.env.VUE_APP_API_URL + "/chat/getupdate"
+    getOrder(){
+      var updateAPI = process.env.VUE_APP_API_URL + "/getOrder"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
+      var id = obj["User info"]["id"]
       var pwHash = obj["User info"]["pwHash"]
       
       fetch(updateAPI, {
@@ -136,13 +86,14 @@ export default {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name,
+          id: id,
           pwHash: pwHash,
         })
       })
       .then((response) => response.json())
       .then((post) => {
-        this.items = post
-        console.log(this.items)
+        this.orders = post
+        console.log(this.orders)
       })
     },
   }

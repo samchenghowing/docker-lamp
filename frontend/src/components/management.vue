@@ -6,7 +6,7 @@
           <h1> management 
             <v-menu>
               <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" class="mt-n2" @click="getUpdate">
+                <v-btn v-bind="props" class="mt-n2" @click="getResults">
                   refresh
                 </v-btn>
               </template>
@@ -25,7 +25,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="item in items"
+                v-for="item in results"
                 :key="item.name"
               >
                 <td>{{ item.result_id }}</td>
@@ -45,7 +45,7 @@
 <script>
 export default {
   mounted() {
-    this.getUpdate()
+    this.getResults()
   },
   name: "ChatPage",
   data() {
@@ -54,12 +54,12 @@ export default {
       user: "",
       messageText: "",
       dialog: false,
-      items: null,
+      results: null,
     };
   },
   methods: {
-    getUpdate(){
-      var updateAPI = process.env.VUE_APP_API_URL + "/chat/getupdate"
+    getResults(){
+      var updateAPI = process.env.VUE_APP_API_URL + "/getResults"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
       var pwHash = obj["User info"]["pwHash"]
@@ -74,8 +74,8 @@ export default {
       })
       .then((response) => response.json())
       .then((post) => {
-        this.items = post
-        console.log(this.items)
+        this.results = post
+        console.log(this.results)
       })
     },
   }

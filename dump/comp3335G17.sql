@@ -1,17 +1,15 @@
 SET time_zone = "+08:00";
 
--- CREATE DATABASE comp3335G17;
-
-
 CREATE TABLE Patients (
   patient_id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name varbinary(512) DEFAULT NULL, -- encrypted
   date_of_birth DATE NOT NULL,
-  contact_information VARCHAR(255) NOT NULL,
-  insurance_details VARCHAR(255) NOT NULL,
+  contact_information varbinary(512) DEFAULT NULL, -- encrypted
+  insurance_details varbinary(512) DEFAULT NULL, -- encrypted
   username VARCHAR(255) NOT NULL,
-  pwHash VARCHAR(255) NOT NULL
-);
+  pwHash VARCHAR(255) NOT NULL,
+  enc_iv binary(16) DEFAULT NULL -- for encryption
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Tests_Catalog (
   test_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -19,7 +17,7 @@ CREATE TABLE Tests_Catalog (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   cost DECIMAL(10, 2) NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Orders (
   order_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,14 +28,14 @@ CREATE TABLE Orders (
   status VARCHAR(255) NOT NULL,
   FOREIGN KEY (patient_id) REFERENCES Patients (patient_id),
   FOREIGN KEY (test_id) REFERENCES Tests_Catalog (test_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Appointments (
   appointment_id INT AUTO_INCREMENT PRIMARY KEY,
   patient_id INT NOT NULL,
   appointment_date DATETIME NOT NULL,
   FOREIGN KEY (patient_id) REFERENCES Patients (patient_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Results (
   result_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -46,7 +44,7 @@ CREATE TABLE Results (
   interpretation TEXT,
   reporting_pathologist VARCHAR(255) NOT NULL,
   FOREIGN KEY (order_id) REFERENCES Orders (order_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Billing (
   bill_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -55,7 +53,7 @@ CREATE TABLE Billing (
   payment_status VARCHAR(255) NOT NULL,
   insurance_claim_status VARCHAR(255) NOT NULL,
   FOREIGN KEY (order_id) REFERENCES Orders (order_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE Staff (
   staff_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -64,12 +62,19 @@ CREATE TABLE Staff (
   contact_information VARCHAR(255) NOT NULL,
   username VARCHAR(255) NOT NULL,
   pwHash VARCHAR(255) NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `Patients` (`name`, `date_of_birth`, `contact_information`, `insurance_details`, `username`, `pwHash`) VALUES
-('John Doe', '1990-05-15', 'john@example.com', 'Insurance Company A', 'john_doe', 'pbkdf2:sha256:600000$2GQOX8fIBMPODxuL$237b5461860bcc8cee64b11e49f3b54eb9d0e5b4116b108e2765ffce0f593753'),
-('Jane Smith', '1985-12-10', 'jane@example.com', 'Insurance Company B', 'jane_smith', 'pbkdf2:sha256:600000$woyBKh5CUmAx7azh$9d8c951ca72e28b2d372cff2b8dd501c38e1e247f178d1bf49b0b3f004089ea9'),
-('Michael Johnson', '1978-09-20', 'michael@example.com', 'Insurance Company C', 'michael_j', 'pbkdf2:sha256:600000$ZoQIW7oqjx1bdDw7$091b7f9bf86a54ed905ffd75e586ff02dd56438cb8e1a1ad0d51d6eb95c34d63');
+SET block_encryption_mode = 'aes-256-cbc';
+SET @key_str = 'My secret passphrase';
+
+SET @init_vector = RANDOM_BYTES(16);
+SET @init_vector1 = RANDOM_BYTES(16);
+SET @init_vector2 = RANDOM_BYTES(16);
+
+INSERT INTO `Patients` (`name`, `date_of_birth`, `contact_information`, `insurance_details`,`enc_iv`, `username`, `pwHash`) VALUES
+(AES_ENCRYPT('John Doe', @key_str, @init_vector, "hkdf"), '1990-05-15', AES_ENCRYPT('john@example.com', @key_str, @init_vector, "hkdf"), AES_ENCRYPT('Insurance Company A', @key_str, @init_vector, "hkdf"), @init_vector, 'john_doe', 'pbkdf2:sha256:600000$2GQOX8fIBMPODxuL$237b5461860bcc8cee64b11e49f3b54eb9d0e5b4116b108e2765ffce0f593753'),
+(AES_ENCRYPT('Jane Smith', @key_str, @init_vector1, "hkdf"), '1985-12-10', AES_ENCRYPT('jane@example.com', @key_str, @init_vector1, "hkdf"), AES_ENCRYPT('Insurance Company B', @key_str, @init_vector1, "hkdf"), @init_vector1, 'jane_smith', 'pbkdf2:sha256:600000$woyBKh5CUmAx7azh$9d8c951ca72e28b2d372cff2b8dd501c38e1e247f178d1bf49b0b3f004089ea9'),
+(AES_ENCRYPT('Michael Johnson', @key_str, @init_vector2, "hkdf"), '1978-09-20', AES_ENCRYPT('michael@example.com', @key_str, @init_vector2, "hkdf"), AES_ENCRYPT('Insurance Company C', @key_str, @init_vector2, "hkdf"), @init_vector2, 'michael_j', 'pbkdf2:sha256:600000$ZoQIW7oqjx1bdDw7$091b7f9bf86a54ed905ffd75e586ff02dd56438cb8e1a1ad0d51d6eb95c34d63');
 
 INSERT INTO Tests_Catalog (test_code, name, description, cost) VALUES
 ('T001', 'Blood Test', 'Complete blood count and basic metabolic panel', 100.00),
@@ -97,6 +102,37 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 (3, 80.00, 'Pending', 'Not Claimed');
 
 INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
-('Dr. X', 'Physician', 'drx@example.com', 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
-('Dr. Y', 'Physician', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
-('Dr. Z', 'Secretaries', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
+('Dr. X', 'lab_staff', 'drx@example.com', 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
+('Dr. Y', 'lab_staff', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
+('Dr. Z', 'secretaries', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
+
+-- Create the role
+CREATE ROLE 'lab_staff', 'secretaries', 'patients';
+
+-- Grant table privileges
+GRANT INSERT, SELECT, UPDATE ON myDb.Orders TO lab_staff;
+GRANT INSERT, SELECT, UPDATE ON myDb.Results TO lab_staff;
+
+GRANT INSERT, SELECT, UPDATE ON myDb.Appointments TO secretaries;
+GRANT UPDATE ON myDb.Billing TO secretaries;
+GRANT SELECT ON myDb.Orders TO secretaries;
+GRANT SELECT ON myDb.Results TO secretaries;
+
+GRANT SELECT ON myDb.Orders TO patients;
+GRANT SELECT ON myDb.Results TO patients;
+GRANT SELECT ON myDb.Billing TO patients;
+
+-- create general type of users
+CREATE USER 'LS' IDENTIFIED BY 'lab_staff';
+CREATE USER 'SE' IDENTIFIED BY 'secretaries';
+CREATE USER 'PA' IDENTIFIED BY 'patients';
+
+GRANT 'lab_staff' to 'LS';
+GRANT 'secretaries' to 'SE';
+GRANT 'patients' to 'PA';
+
+SET DEFAULT ROLE 'lab_staff' TO 'LS';
+SET DEFAULT ROLE 'secretaries' TO 'SE';
+SET DEFAULT ROLE 'patients' TO 'PA';
+
+FLUSH PRIVILEGES;

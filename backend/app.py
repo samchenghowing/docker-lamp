@@ -60,7 +60,11 @@ def checkpassword(name, password):
 
     for row in user:
         hashedpw = row['pwHash']
-        if isStaff: role = row['role']
+        if isStaff: 
+            role = row['role']
+            id = row['staff_id']
+        else:
+            id = row['patient_id']
 
     if check_password_hash(hashedpw, password):
         # update the format of hash before send to client
@@ -68,7 +72,7 @@ def checkpassword(name, password):
         userDict["pwHash"] = password
         userDict["isStaff"] = isStaff
         userDict["name"] = name
-        userDict["role"] = role
+        userDict["id"] = id
         # IPDict[request.remote_addr].append(name)
         json_data = {"isvalid":True, "from client": request.remote_addr,
                     "User info": userDict, "role": role}
@@ -78,22 +82,22 @@ def checkpassword(name, password):
                     "attempt count": IPDict[request.remote_addr][0], "status": "password not match"}
         return json_data
 
+def getDBCredByRole(isVaildRequest):
+    if isVaildRequest['role'] == 'lab_staff':
+        dbUser = 'LS'
+        dbPW = 'lab_staff'
+    elif isVaildRequest['role'] == 'secretaries':
+        dbUser = 'SE'
+        dbPW = 'secretaries'
+    else:
+        dbUser = 'PA'
+        dbPW = 'patients'
+    return dbUser, dbPW
+
 # This route is for testing use only.
 @app.route("/")
 def main():
     return "Wellcome to COMP3335 Backend!" 
-
-# This route is for testing use only.
-@app.route('/api/users')
-@cross_origin()
-def get_users():
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM Patients")
-            users = cursor.fetchall()
-    conn.close()
-    return users, 200
 
 @app.route('/api/login', methods=['POST'])
 @cross_origin()
@@ -121,9 +125,9 @@ def login():
     json_data = checkpassword(name, password)
     return jsonify(json_data), 200
 
-@app.route('/api/chat/getupdate', methods=['POST'])
+@app.route('/api/getResults', methods=['POST'])
 @cross_origin()
-def getupdate():
+def getResults():
     json_data = request.get_json()
     name = json_data['name']
     password = json_data['pwHash']
@@ -134,6 +138,8 @@ def getupdate():
 
     conn = get_db_connection()
     if conn and conn.is_connected():
+        dbUser, dbPW = getDBCredByRole(isVaildRequest)
+        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute("SELECT * FROM Results")
             results = cursor.fetchall()
@@ -143,11 +149,31 @@ def getupdate():
 @app.route('/api/updateResult', methods=['POST'])
 @cross_origin()
 def updateResult():
-    # lab staff update result
-    # INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES
-    # (1, 'https://example.com/reports/1', 'Normal blood test results', 'Dr. Y'),
     json_data = request.get_json()
     name = json_data['name']
+    password = json_data['pwHash']
+    order_id = json_data['order_id']
+    report_url = json_data['report_url']
+    interpretation = json_data['interpretation']
+
+    isVaildRequest = checkpassword(name, password)
+    if isVaildRequest['isvalid'] == False:
+        return isVaildRequest, 200
+
+    conn = get_db_connection()
+    if conn and conn.is_connected():
+        with conn.cursor(dictionary=True) as cursor:
+            cursor.execute("INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)", (order_id, report_url, interpretation, name))
+            conn.commit()
+    conn.close()
+    return jsonify("updated!"), 200
+
+@app.route('/api/getOrder', methods=['POST'])
+@cross_origin()
+def getOrder():
+    json_data = request.get_json()
+    name = json_data['name']
+    id = json_data['id']
     password = json_data['pwHash']
 
     isVaildRequest = checkpassword(name, password)
@@ -157,7 +183,10 @@ def updateResult():
     conn = get_db_connection()
     if conn and conn.is_connected():
         with conn.cursor(dictionary=True) as cursor:
-            cursor.execute("SELECT * FROM Results")
+            sql = "SELECT O.order_id, O.order_date, T.name AS test_name, O.ordering_physician, O.status \
+                    FROM Orders AS O JOIN Tests_Catalog AS T ON O.test_id = T.test_id \
+                    WHERE O.patient_id = %s"
+            cursor.execute(sql, (id,))
             results = cursor.fetchall()
     conn.close()
     return jsonify(results), 200
