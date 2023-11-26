@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+import os
+import logging
 import mysql.connector
 from flask import Flask,request,jsonify
 from flask_cors import CORS, cross_origin
@@ -22,6 +24,18 @@ config = {
   'raise_on_warnings': True
 }
 
+def initLogger():
+    """Create a logger and log file named with today's day + connectionLog.txt """
+    today = date.today()
+    if not os.path.exists("Logs"):
+        os.makedirs("Logs")
+    logging.basicConfig(filename=f'Logs/{today.strftime("%d%m%y") + "connectionLog.txt"}',
+                        filemode='a',
+                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.DEBUG)
+    logging.getLogger('Backend').info("The logger is initialized")
+
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -41,6 +55,7 @@ def checkpassword(name, password):
         stmtP = "SELECT * FROM Patients where username = %s"
         cursor.execute(stmtP) # prepare the statement
         cursor.execute(stmtP, (name,)) # execute the prepared statement
+        logging.getLogger('Backend').info(stmtP + name)
         user = cursor.fetchall()
         isStaff = False
         role = ""
@@ -73,7 +88,6 @@ def checkpassword(name, password):
         userDict["isStaff"] = isStaff
         userDict["name"] = name
         userDict["id"] = id
-        # IPDict[request.remote_addr].append(name)
         json_data = {"isvalid":True, "from client": request.remote_addr,
                     "User info": userDict, "role": role}
         return json_data
@@ -162,8 +176,12 @@ def updateResult():
 
     conn = get_db_connection()
     if conn and conn.is_connected():
+        dbUser, dbPW = getDBCredByRole(isVaildRequest)
+        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
         with conn.cursor(dictionary=True) as cursor:
-            cursor.execute("INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)", (order_id, report_url, interpretation, name))
+            sql = "INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)"
+            cursor.execute(sql, (order_id, report_url, interpretation, name))
+            logging.getLogger('Backend').info(sql, order_id, report_url, interpretation, name)
             conn.commit()
     conn.close()
     return jsonify("updated!"), 200
@@ -182,14 +200,18 @@ def getOrder():
 
     conn = get_db_connection()
     if conn and conn.is_connected():
+        dbUser, dbPW = getDBCredByRole(isVaildRequest)
+        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
         with conn.cursor(dictionary=True) as cursor:
             sql = "SELECT O.order_id, O.order_date, T.name AS test_name, O.ordering_physician, O.status \
                     FROM Orders AS O JOIN Tests_Catalog AS T ON O.test_id = T.test_id \
                     WHERE O.patient_id = %s"
             cursor.execute(sql, (id,))
+            logging.getLogger('Backend').info(sql + str(id))
             results = cursor.fetchall()
     conn.close()
     return jsonify(results), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=15000, debug=True, use_reloader=True)
+    initLogger()

@@ -40,7 +40,7 @@ CREATE TABLE Appointments (
 CREATE TABLE Results (
   result_id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
-  report_url VARCHAR(255) NOT NULL,
+  report_url VARCHAR(255) NOT NULL, -- not encrypted since we assume that the report is encrypted
   interpretation TEXT,
   reporting_pathologist VARCHAR(255) NOT NULL,
   FOREIGN KEY (order_id) REFERENCES Orders (order_id)
@@ -59,9 +59,10 @@ CREATE TABLE Staff (
   staff_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   role VARCHAR(255) NOT NULL,
-  contact_information VARCHAR(255) NOT NULL,
+  contact_information varbinary(512) DEFAULT NULL, -- encrypted
   username VARCHAR(255) NOT NULL,
-  pwHash VARCHAR(255) NOT NULL
+  pwHash VARCHAR(255) NOT NULL,
+  enc_iv binary(16) DEFAULT NULL -- for encryption
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET block_encryption_mode = 'aes-256-cbc';
@@ -102,25 +103,26 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 (3, 80.00, 'Pending', 'Not Claimed');
 
 INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
-('Dr. X', 'lab_staff', 'drx@example.com', 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
-('Dr. Y', 'lab_staff', 'dry@example.com', 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
-('Dr. Z', 'secretaries', 'drz@example.com', 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
+('Dr. X', 'lab_staff', AES_ENCRYPT('drx@example.com', @key_str, @init_vector, "hkdf"), 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
+('Dr. Y', 'lab_staff', AES_ENCRYPT('dryy@example.com', @key_str, @init_vector, "hkdf"), 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
+('Dr. Z', 'secretaries', AES_ENCRYPT('drz@example.com', @key_str, @init_vector, "hkdf"), 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
 
 -- Create the role
 CREATE ROLE 'lab_staff', 'secretaries', 'patients';
 
 -- Grant table privileges
-GRANT INSERT, SELECT, UPDATE ON myDb.Orders TO lab_staff;
-GRANT INSERT, SELECT, UPDATE ON myDb.Results TO lab_staff;
+GRANT SELECT, INSERT, UPDATE ON myDb.Orders TO lab_staff;
+GRANT SELECT, INSERT, UPDATE ON myDb.Results TO lab_staff;
 
-GRANT INSERT, SELECT, UPDATE ON myDb.Appointments TO secretaries;
-GRANT UPDATE ON myDb.Billing TO secretaries;
+GRANT SELECT, INSERT, UPDATE ON myDb.Appointments TO secretaries;
+GRANT SELECT, INSERT, UPDATE ON myDb.Billing TO secretaries;
 GRANT SELECT ON myDb.Orders TO secretaries;
 GRANT SELECT ON myDb.Results TO secretaries;
 
 GRANT SELECT ON myDb.Orders TO patients;
 GRANT SELECT ON myDb.Results TO patients;
 GRANT SELECT ON myDb.Billing TO patients;
+GRANT SELECT (name, description) ON myDb.Tests_Catalog TO patients;
 
 -- create general type of users
 CREATE USER 'LS' IDENTIFIED BY 'lab_staff';
@@ -134,5 +136,14 @@ GRANT 'patients' to 'PA';
 SET DEFAULT ROLE 'lab_staff' TO 'LS';
 SET DEFAULT ROLE 'secretaries' TO 'SE';
 SET DEFAULT ROLE 'patients' TO 'PA';
+
+DROP FUNCTION IF EXISTS F_AES_DECRYPT //
+CREATE FUNCTION F_AES_DECRYPT(PID INT) RETURNS VARCHAR
+BEGIN
+  DECLARE NAME_FOUND VARCHAR DEFAULT "";
+    SELECT EMPLOYEE_NAME INTO NAME_FOUND FROM TABLE_NAME WHERE ID = PID;
+    SELECT AES_DECRYPT(enc_data, @key_str, enc_iv, "hkdf") FROM data; 
+  RETURN NAME_FOUND;
+END;
 
 FLUSH PRIVILEGES;
