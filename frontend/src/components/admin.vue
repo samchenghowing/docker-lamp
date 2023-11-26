@@ -3,7 +3,7 @@
     <v-container>
       <v-row>
         <v-col>
-          <h1> management 
+          <h1> admin 
             <v-menu>
               <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" class="mt-n2" @click="getResults">
@@ -16,23 +16,19 @@
           <v-table>
             <thead>
               <tr>
-                <th class="text-left"> result_id </th>
-                <th class="text-left"> order_id </th>
-                <th class="text-left"> report_url </th>
-                <th class="text-left"> interpretation </th>
-                <th class="text-left"> reporting_pathologist </th>
+                <th class="text-left"> log_id </th>
+                <th class="text-left"> log_date </th>
+                <th class="text-left"> log_info </th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="item in results"
+                v-for="item in logs"
                 :key="item.name"
               >
-                <td>{{ item.result_id }}</td>
-                <td>{{ item.order_id }}</td>
-                <td>{{ item.report_url }}</td>
-                <td>{{ item.interpretation }}</td>
-                <td>{{ item.reporting_pathologist }}</td>
+                <td>{{ item.log_id }}</td>
+                <td>{{ item.log_date }}</td>
+                <td>{{ item.log_info }}</td>
               </tr>
             </tbody>
           </v-table>
@@ -54,15 +50,14 @@ export default {
       user: "",
       messageText: "",
       dialog: false,
-      results: null,
+      logs: null,
     };
   },
   methods: {
     getResults(){
-      var updateAPI = process.env.VUE_APP_API_URL + "/getResults"
+      var updateAPI = process.env.VUE_APP_API_URL + "/getLog"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
-      var id = obj["User info"]["id"]
       var pwHash = obj["User info"]["pwHash"]
       
       fetch(updateAPI, {
@@ -70,14 +65,14 @@ export default {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name,
-          id: id,
           pwHash: pwHash,
         })
       })
       .then((response) => response.json())
       .then((post) => {
-        this.results = post
-        console.log(this.results)
+        this.logs = post
+        // if (alert)... do something here
+        console.log(this.logs)
       })
     },
   }

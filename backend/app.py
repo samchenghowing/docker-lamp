@@ -1,6 +1,5 @@
 from datetime import date, datetime, timedelta
-import os
-import logging
+import time
 import mysql.connector
 from flask import Flask,request,jsonify
 from flask_cors import CORS, cross_origin
@@ -24,18 +23,6 @@ config = {
   'raise_on_warnings': True
 }
 
-def initLogger():
-    """Create a logger and log file named with today's day + connectionLog.txt """
-    today = date.today()
-    if not os.path.exists("Logs"):
-        os.makedirs("Logs")
-    logging.basicConfig(filename=f'Logs/{today.strftime("%d%m%y") + "connectionLog.txt"}',
-                        filemode='a',
-                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                        datefmt='%H:%M:%S',
-                        level=logging.DEBUG)
-    logging.getLogger('Backend').info("The logger is initialized")
-
 def dict_factory(cursor, row):
     d = {}
     for idx, col in enumerate(cursor.description):
@@ -47,15 +34,47 @@ def get_db_connection():
     conn.row_factory = dict_factory
     return conn
 
+def is_inappropriate_access(query_string):
+    query_string = query_string.lower()
+    if "select" in query_string:
+        return True
+    elif "update" in query_string:
+        return True
+    if "delete" in query_string:
+        return True
+    if "insert" in query_string:
+        return True
+    if "drop" in query_string:
+        return True
+    if "create" in query_string:
+        return True
+    return False
+
+def vaildateSQL(query_string):
+    if is_inappropriate_access(query_string):
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            conn.cmd_change_user(username='root', password='test', database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                currentT = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+                sql = "INSERT INTO SuspiciousLog (log_date, log_info) VALUES (%s, %s)"
+                cursor.execute(sql, (currentT, query_string))
+                conn.commit()
+        conn.close()
+
 def checkpassword(name, password):
     conn = get_db_connection()
     if conn and conn.is_connected():
         cursor = conn.cursor(prepared=True, dictionary=True)
         # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
         stmtP = "SELECT * FROM Patients where username = %s"
+        if vaildateSQL(name):
+            json_data = {"isvalid":False, "from client": request.remote_addr,
+                        "attempt count": IPDict[request.remote_addr][0], "status": "possiable sql injection attempt"}
+            return json_data
+
         cursor.execute(stmtP) # prepare the statement
         cursor.execute(stmtP, (name,)) # execute the prepared statement
-        logging.getLogger('Backend').info(stmtP + name)
         user = cursor.fetchall()
         isStaff = False
         role = ""
@@ -108,6 +127,10 @@ def getDBCredByRole(isVaildRequest):
         dbPW = 'patients'
     return dbUser, dbPW
 
+@app.errorhandler(500)
+def code_500(error):
+    return (error), 500
+
 # This route is for testing use only.
 @app.route("/")
 def main():
@@ -145,6 +168,7 @@ def getResults():
     json_data = request.get_json()
     name = json_data['name']
     password = json_data['pwHash']
+    id = json_data['id']
 
     isVaildRequest = checkpassword(name, password)
     if isVaildRequest['isvalid'] == False:
@@ -155,7 +179,15 @@ def getResults():
         dbUser, dbPW = getDBCredByRole(isVaildRequest)
         conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
         with conn.cursor(dictionary=True) as cursor:
-            cursor.execute("SELECT * FROM Results")
+            if dbUser == 'PA':
+                sql = "SELECT r.result_id, r.order_id, r.report_url, r.interpretation, r.reporting_pathologist\
+                        FROM Results r JOIN Orders o ON r.order_id = o.order_id\
+                        WHERE o.patient_id = %s; "
+                if vaildateSQL(str(id)):
+                    return jsonify("possiable injection detected"), 200
+                cursor.execute(sql, (id,))
+            else:
+                cursor.execute("SELECT * FROM Results")
             results = cursor.fetchall()
     conn.close()
     return jsonify(results), 200
@@ -180,8 +212,9 @@ def updateResult():
         conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
         with conn.cursor(dictionary=True) as cursor:
             sql = "INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)"
+            if vaildateSQL(str(order_id)+ str(report_url) + str(interpretation)+ str(name)):
+                return jsonify("prossible injection!"), 200
             cursor.execute(sql, (order_id, report_url, interpretation, name))
-            logging.getLogger('Backend').info(sql, order_id, report_url, interpretation, name)
             conn.commit()
     conn.close()
     return jsonify("updated!"), 200
@@ -206,12 +239,60 @@ def getOrder():
             sql = "SELECT O.order_id, O.order_date, T.name AS test_name, O.ordering_physician, O.status \
                     FROM Orders AS O JOIN Tests_Catalog AS T ON O.test_id = T.test_id \
                     WHERE O.patient_id = %s"
+            if vaildateSQL(str(id)):
+                jsonify("possible injection"), 200
             cursor.execute(sql, (id,))
-            logging.getLogger('Backend').info(sql + str(id))
+            results = cursor.fetchall()
+    conn.close()
+    return jsonify(results), 200
+
+@app.route('/api/getBills', methods=['POST'])
+@cross_origin()
+def getBills():
+    json_data = request.get_json()
+    name = json_data['name']
+    id = json_data['id']
+    password = json_data['pwHash']
+
+    isVaildRequest = checkpassword(name, password)
+    if isVaildRequest['isvalid'] == False:
+        return isVaildRequest, 200
+
+    conn = get_db_connection()
+    if conn and conn.is_connected():
+        dbUser, dbPW = getDBCredByRole(isVaildRequest)
+        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+        with conn.cursor(dictionary=True) as cursor:
+            sql = "SELECT b.bill_id, o.order_id, b.billed_amount, b.payment_status, b.insurance_claim_status\
+                    FROM Billing b INNER JOIN Orders o ON b.order_id = o.order_id\
+                    WHERE o.patient_id = %s"
+            if vaildateSQL(str(id)):
+                jsonify("possible injection"), 200
+            cursor.execute(sql, (id,))
+            results = cursor.fetchall()
+    conn.close()
+    return jsonify(results), 200
+
+@app.route('/api/getLog', methods=['POST'])
+@cross_origin()
+def getLog():
+    json_data = request.get_json()
+    name = json_data['name']
+    id = json_data['id']
+    password = json_data['pwHash']
+
+    isVaildRequest = checkpassword(name, password)
+    if isVaildRequest['isvalid'] == False:
+        return isVaildRequest, 200
+
+    conn = get_db_connection()
+    if conn and conn.is_connected():
+        with conn.cursor(dictionary=True) as cursor:
+            sql = "SELECT * from SuspiciousLog"
+            cursor.execute(sql)
             results = cursor.fetchall()
     conn.close()
     return jsonify(results), 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=15000, debug=True, use_reloader=True)
-    initLogger()
+    app.run(host="0.0.0.0", port=15000, debug=False, use_reloader=True)

@@ -27,14 +27,14 @@
             <v-list density="compact" nav>
                 <div v-if=isLoggedIn>
                     <v-list-item prepend-icon="mdi-account-box" title="Account" v-on:click="isLoggedIn? $router.push('/account'):dialog=true"></v-list-item>
-                    <div v-if="role == 'Secretaries'">
-                        <v-list-item prepend-icon="mdi-tool" title="Management" v-on:click="isLoggedIn? $router.push('/management'):dialog=true"></v-list-item>
+                    <div v-if="role == 'secretaries'">
+                        <v-list-item prepend-icon="mdi-tools" title="Management" v-on:click="isLoggedIn? $router.push('/management'):dialog=true"></v-list-item>
                     </div>
-                    <div v-if="role == 'Physician'">
+                    <div v-if="role == 'lab_staff'">
                         <v-list-item prepend-icon="mdi-calendar" title="Results" v-on:click="isLoggedIn? $router.push('/results'):dialog=true"></v-list-item>
                     </div>
                     <div v-if="role == ''">
-                        <v-list-item prepend-icon="mdi-tool" title="patients" v-on:click="isLoggedIn? $router.push('/patients'):dialog=true"></v-list-item>
+                        <v-list-item prepend-icon="mdi-heart" title="My orders" v-on:click="isLoggedIn? $router.push('/patients'):dialog=true"></v-list-item>
                     </div>
                     <v-list-item prepend-icon="mdi-logout" title="Logout" v-on:click="logout"></v-list-item>
                 </div>
@@ -89,6 +89,7 @@ export default {
             sessionStorage.clear()
             this.isLoggedIn = false
             this.UserName = "Guest user"
+            this.role = ""
             this.$router.push('/login')
         }
     },

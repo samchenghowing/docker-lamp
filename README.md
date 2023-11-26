@@ -10,7 +10,7 @@ docker compose -f docker-compose-vue.yml up
 
 Run mysql client:
 
-`docker-compose exec db mysql -u root -p` 
+`docker exec -it db mysql -u user -ptest` 
 
 Open flask backend at [http://localhost:15000](http://localhost:15000).
 
@@ -27,3 +27,6 @@ Staff (Lab staff):
 
 Staff (Secretaries):
 'dr_z', 'pass9876'
+
+Admin user (admin):
+'admin', 'pass9876'

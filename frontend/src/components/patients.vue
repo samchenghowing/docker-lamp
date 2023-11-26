@@ -18,7 +18,6 @@
             <v-card-text>
               <v-window v-model="tab">
                 <v-window-item value="Orders">
-                  Orders
 
                   <v-table>
                     <thead>
@@ -46,11 +45,55 @@
                 </v-window-item>
 
                 <v-window-item value="Results">
-                  Results
+                  <v-table>
+                    <thead>
+                      <tr>
+                        <th class="text-left"> result_id </th>
+                        <th class="text-left"> order_id </th>
+                        <th class="text-left"> report_url </th>
+                        <th class="text-left"> interpretation </th>
+                        <th class="text-left"> reporting_pathologist </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="item in results"
+                        :key="item.name"
+                      >
+                        <td>{{ item.result_id }}</td>
+                        <td>{{ item.order_id }}</td>
+                        <td>{{ item.report_url }}</td>
+                        <td>{{ item.interpretation }}</td>
+                        <td>{{ item.reporting_pathologist }}</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
                 </v-window-item>
 
-                <v-window-item value="Billing">
-                  Billing
+                <v-window-item value="Billing">          
+                  <v-table>
+                    <thead>
+                      <tr>
+                        <th class="text-left"> bill_id </th>
+                        <th class="text-left"> order_id </th>
+                        <th class="text-left"> billed_amount </th>
+                        <th class="text-left"> payment_status </th>
+                        <th class="text-left"> insurance_claim_status </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="item in bills"
+                        :key="item.name"
+                      >
+                        <td>{{ item.bill_id }}</td>
+                        <td>{{ item.order_id }}</td>
+                        <td>{{ item.billed_amount }}</td>
+                        <td>{{ item.payment_status }}</td>
+                        <td>{{ item.insurance_claim_status }}</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
                 </v-window-item>
               </v-window>
             </v-card-text>
@@ -66,11 +109,15 @@
 export default {
   mounted() {
     this.getOrder()
+    this.getResults()
+    this.getBills()
   },
   data() {
     return {
       tab: null,
       orders: null,
+      results: null,
+      bills: null,
     };
   },
   methods: {
@@ -94,6 +141,50 @@ export default {
       .then((post) => {
         this.orders = post
         console.log(this.orders)
+      })
+    },
+    getResults(){
+      var updateAPI = process.env.VUE_APP_API_URL + "/getResults"
+      var obj = JSON.parse(sessionStorage.user)
+      var name = obj["User info"]["name"]
+      var id = obj["User info"]["id"]
+      var pwHash = obj["User info"]["pwHash"]
+      
+      fetch(updateAPI, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          id: id,
+          pwHash: pwHash,
+        })
+      })
+      .then((response) => response.json())
+      .then((post) => {
+        this.results = post
+        console.log(this.results)
+      })
+    },
+    getBills(){
+      var updateAPI = process.env.VUE_APP_API_URL + "/getBills"
+      var obj = JSON.parse(sessionStorage.user)
+      var name = obj["User info"]["name"]
+      var id = obj["User info"]["id"]
+      var pwHash = obj["User info"]["pwHash"]
+      
+      fetch(updateAPI, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          id: id,
+          pwHash: pwHash,
+        })
+      })
+      .then((response) => response.json())
+      .then((post) => {
+        this.bills = post
+        console.log(this.bills)
       })
     },
   }

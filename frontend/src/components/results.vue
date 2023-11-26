@@ -133,6 +133,7 @@ export default {
       var updateAPI = process.env.VUE_APP_API_URL + "/getResults"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
+      var id = obj["User info"]["id"]
       var pwHash = obj["User info"]["pwHash"]
       
       fetch(updateAPI, {
@@ -140,6 +141,7 @@ export default {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name,
+          id: id,
           pwHash: pwHash,
         })
       })
