@@ -107,6 +107,12 @@ INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
 ('Dr. Y', 'lab_staff', AES_ENCRYPT('dryy@example.com', @key_str, @init_vector, "hkdf"), 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
 ('Dr. Z', 'secretaries', AES_ENCRYPT('drz@example.com', @key_str, @init_vector, "hkdf"), 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
 
+-- DROP FUNCTION IF EXISTS F_AES_DECRYPT
+-- CREATE FUNCTION F_AES_DECRYPT(PID INT) RETURNS VARCHAR
+-- BEGIN
+--     RETURN SELECT AES_DECRYPT(enc_data, @key_str, enc_iv, "hkdf") FROM data; 
+-- END;
+
 -- Create the role
 CREATE ROLE 'lab_staff', 'secretaries', 'patients';
 
@@ -122,7 +128,7 @@ GRANT SELECT ON myDb.Results TO secretaries;
 GRANT SELECT ON myDb.Orders TO patients;
 GRANT SELECT ON myDb.Results TO patients;
 GRANT SELECT ON myDb.Billing TO patients;
-GRANT SELECT (name, description) ON myDb.Tests_Catalog TO patients;
+GRANT SELECT (test_id, name, description) ON myDb.Tests_Catalog TO patients;
 
 -- create general type of users
 CREATE USER 'LS' IDENTIFIED BY 'lab_staff';
@@ -132,18 +138,10 @@ CREATE USER 'PA' IDENTIFIED BY 'patients';
 GRANT 'lab_staff' to 'LS';
 GRANT 'secretaries' to 'SE';
 GRANT 'patients' to 'PA';
+-- GRANT EXECUTE ON F_AES_DECRYPT to 'PA';
 
 SET DEFAULT ROLE 'lab_staff' TO 'LS';
 SET DEFAULT ROLE 'secretaries' TO 'SE';
 SET DEFAULT ROLE 'patients' TO 'PA';
-
-DROP FUNCTION IF EXISTS F_AES_DECRYPT //
-CREATE FUNCTION F_AES_DECRYPT(PID INT) RETURNS VARCHAR
-BEGIN
-  DECLARE NAME_FOUND VARCHAR DEFAULT "";
-    SELECT EMPLOYEE_NAME INTO NAME_FOUND FROM TABLE_NAME WHERE ID = PID;
-    SELECT AES_DECRYPT(enc_data, @key_str, enc_iv, "hkdf") FROM data; 
-  RETURN NAME_FOUND;
-END;
 
 FLUSH PRIVILEGES;
