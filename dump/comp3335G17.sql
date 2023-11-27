@@ -68,7 +68,8 @@ CREATE TABLE Staff (
 CREATE TABLE SuspiciousLog (
   log_id INT AUTO_INCREMENT PRIMARY KEY,
   log_date DATETIME NOT NULL,
-  log_info VARCHAR(255) NOT NULL
+  log_info VARCHAR(255) NOT NULL,
+  send_from VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET block_encryption_mode = 'aes-256-cbc';
@@ -112,8 +113,11 @@ INSERT INTO Billing (order_id, billed_amount, payment_status, insurance_claim_st
 INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
 ('Dr. X', 'lab_staff', AES_ENCRYPT('drx@example.com', @staff_key, @init_vector, "hkdf"), 'dr_x', 'pbkdf2:sha256:600000$CoZpPPiPWZqFznXT$91554f9882e5651136118192f5341ed556ae67e428e36f5aafb98bb5a7cd7222'),
 ('Dr. Y', 'lab_staff', AES_ENCRYPT('dryy@example.com', @staff_key, @init_vector, "hkdf"), 'dr_y', 'pbkdf2:sha256:600000$RS0hz9L6okiWjUIO$e2cb5a18a258441fd6288fc1d75f0e0cee44e41c8ac3dd580f1da6e3a937b1d5'),
-('Dr. Z', 'secretaries', AES_ENCRYPT('drz@example.com', @staff_key, @init_vector, "hkdf"), 'dr_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665'),
-('Admin', 'admin', AES_ENCRYPT('admin@example.com', @staff_key, @init_vector, "hkdf"), 'admin', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665');
+('secretary Z', 'secretaries', AES_ENCRYPT('drz@example.com', @staff_key, @init_vector, "hkdf"), 'secretary_z', 'pbkdf2:sha256:600000$MGCXJdZyDky4PigO$e179df88dfce16b2919b1a96925e4a0bbea760bce27eb3b7aa09215795e47665'),
+('Admin', 'admin', AES_ENCRYPT('admin@example.com', @staff_key, @init_vector, "hkdf"), 'admin', 'pbkdf2:sha256:600000$2GQOX8fIBMPODxuL$237b5461860bcc8cee64b11e49f3b54eb9d0e5b4116b108e2765ffce0f593753');
+
+INSERT INTO SuspiciousLog (log_date, log_info, send_from) VALUES
+('2023-11-25 09:00:00', '--select * from Staff;', '192.168.1.2', );
 
 -- DROP FUNCTION IF EXISTS F_AES_DECRYPT
 -- CREATE FUNCTION F_AES_DECRYPT(PID INT) RETURNS VARCHAR
@@ -131,7 +135,7 @@ GRANT SELECT, INSERT, UPDATE ON myDb.Results TO lab_staff;
 GRANT SELECT, INSERT, UPDATE ON myDb.Appointments TO secretaries;
 GRANT SELECT, INSERT, UPDATE ON myDb.Billing TO secretaries;
 GRANT SELECT ON myDb.Orders TO secretaries;
-GRANT SELECT ON myDb.Results TO secretaries;
+GRANT SELECT (result_id, order_id, report_url) ON myDb.Results TO secretaries;
 
 GRANT SELECT ON myDb.Orders TO patients;
 GRANT SELECT ON myDb.Results TO patients;

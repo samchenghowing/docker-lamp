@@ -38,6 +38,11 @@ const routes = [
     name: 'PatientsPage',
     meta: { requiresAuth: true }, 
     component: () => import(/* webpackChunkName: "about" */ '../components/patients.vue')
+  },{
+    path: '/admin',
+    name: 'adminPage',
+    meta: { requiresAuth: true }, 
+    component: () => import(/* webpackChunkName: "about" */ '../components/admin.vue')
   },
 ]
 

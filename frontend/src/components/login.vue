@@ -119,7 +119,8 @@ export default {
               }
             }));
             if (user.role == '') this.$router.push('/patients')
-            else if (user.role == 'Secretaries') this.$router.push('/management')
+            else if (user.role == 'secretaries') this.$router.push('/management')
+            else if (user.role == 'admin') this.$router.push('/admin')
             else this.$router.push('/results')
           }
         })

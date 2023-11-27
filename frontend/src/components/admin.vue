@@ -3,15 +3,7 @@
     <v-container>
       <v-row>
         <v-col>
-          <h1> admin 
-            <v-menu>
-              <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" class="mt-n2" @click="getResults">
-                  refresh
-                </v-btn>
-              </template>
-            </v-menu>
-          </h1>
+          <h1> admin </h1>
 
           <v-table>
             <thead>
@@ -19,6 +11,7 @@
                 <th class="text-left"> log_id </th>
                 <th class="text-left"> log_date </th>
                 <th class="text-left"> log_info </th>
+                <th class="text-left"> send_from </th>
               </tr>
             </thead>
             <tbody>
@@ -29,6 +22,7 @@
                 <td>{{ item.log_id }}</td>
                 <td>{{ item.log_date }}</td>
                 <td>{{ item.log_info }}</td>
+                <td>{{ item.send_from }}</td>
               </tr>
             </tbody>
           </v-table>
@@ -41,20 +35,16 @@
 <script>
 export default {
   mounted() {
-    this.getResults()
+    this.getLog()
   },
-  name: "ChatPage",
   data() {
     return {
-      timer: null,
-      user: "",
-      messageText: "",
       dialog: false,
       logs: null,
     };
   },
   methods: {
-    getResults(){
+    getLog(){
       var updateAPI = process.env.VUE_APP_API_URL + "/getLog"
       var obj = JSON.parse(sessionStorage.user)
       var name = obj["User info"]["name"]
@@ -71,8 +61,8 @@ export default {
       .then((response) => response.json())
       .then((post) => {
         this.logs = post
-        // if (alert)... do something here
         console.log(this.logs)
+        alert("Alert! There were new suspicious queries!")
       })
     },
   }

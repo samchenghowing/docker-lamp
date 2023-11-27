@@ -26,7 +26,7 @@ Staff (Lab staff):
 'dr_y', 'pass5678'
 
 Staff (Secretaries):
-'dr_z', 'pass9876'
+'secretary_z', 'pass9876'
 
 Admin user (admin):
-'admin', 'pass9876'
+'admin', 'password123'
