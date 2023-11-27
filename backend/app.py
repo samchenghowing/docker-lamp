@@ -51,41 +51,48 @@ def is_inappropriate_access(query_string):
     return False
 
 def vaildateSQL(query_string, ipaddr):
-    ipStr = str(ipaddr)
     if is_inappropriate_access(query_string):
-        conn = get_db_connection()
-        if conn and conn.is_connected():
-            conn.cmd_change_user(username='root', password='test', database='myDb')
-            with conn.cursor(dictionary=True) as cursor:
-                currentT = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-                sql = "INSERT INTO SuspiciousLog (log_date, log_info, send_from) VALUES (%s, %s, %s)"
-                cursor.execute(sql, (currentT, query_string, ipStr))
-                conn.commit()
-        conn.close()
+        writeErrorLog(query_string, ipaddr)
 
-def checkpassword(name, password):
+def writeErrorLog(query_string, ipaddr):
+    ipStr = str(ipaddr)
     conn = get_db_connection()
     if conn and conn.is_connected():
-        cursor = conn.cursor(prepared=True, dictionary=True)
-        # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
-        stmtP = "SELECT * FROM Patients where username = %s"
-        if vaildateSQL(name, request.remote_addr):
-            json_data = {"isvalid":False, "from client": request.remote_addr,
-                        "attempt count": IPDict[request.remote_addr][0], "status": "possiable sql injection attempt"}
-            return json_data
-
-        cursor.execute(stmtP) # prepare the statement
-        cursor.execute(stmtP, (name,)) # execute the prepared statement
-        user = cursor.fetchall()
-        isStaff = False
-        role = ""
-        if len(user) == 0: # not Patient user
-            stmtS = "SELECT * FROM Staff where username = %s"
-            cursor.execute(stmtS) # prepare the statement
-            cursor.execute(stmtS, (name,)) # execute the prepared statement
-            user = cursor.fetchall()
-            isStaff = True
+        conn.cmd_change_user(username='root', password='test', database='myDb')
+        with conn.cursor(dictionary=True) as cursor:
+            currentT = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+            sql = "INSERT INTO SuspiciousLog (log_date, log_info, send_from) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (currentT, query_string, ipStr))
+            conn.commit()
     conn.close()
+
+def checkpassword(name, password):
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            cursor = conn.cursor(prepared=True, dictionary=True)
+            # https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursorprepared.html
+            stmtP = "SELECT * FROM Patients where username = %s"
+            if vaildateSQL(name, request.remote_addr):
+                json_data = {"isvalid":False, "from client": request.remote_addr,
+                            "attempt count": IPDict[request.remote_addr][0], "status": "possiable sql injection attempt"}
+                return json_data
+
+            cursor.execute(stmtP) # prepare the statement
+            cursor.execute(stmtP, (name,)) # execute the prepared statement
+            user = cursor.fetchall()
+            isStaff = False
+            role = ""
+            if len(user) == 0: # not Patient user
+                stmtS = "SELECT * FROM Staff where username = %s"
+                cursor.execute(stmtS) # prepare the statement
+                cursor.execute(stmtS, (name,)) # execute the prepared statement
+                user = cursor.fetchall()
+                isStaff = True
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
 
     if user is None:
         json_data = {"isvalid":False,"from client": request.remote_addr,
@@ -205,24 +212,28 @@ def getResults():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            if dbUser == 'PA':
-                sql = "SELECT r.result_id, r.order_id, r.report_url, r.interpretation, r.reporting_pathologist\
-                        FROM Results r JOIN Orders o ON r.order_id = o.order_id\
-                        WHERE o.patient_id = %s; "
-                if vaildateSQL(str(id), request.remote_addr):
-                    return jsonify("possiable injection detected"), 200
-                cursor.execute(sql, (id,))
-            elif dbUser == 'LS':
-                cursor.execute("SELECT * FROM Results")
-            else:
-                cursor.execute("SELECT result_id, order_id, report_url FROM Results")
-            results = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                if dbUser == 'PA':
+                    sql = "SELECT r.result_id, r.order_id, r.report_url, r.interpretation, r.reporting_pathologist\
+                            FROM Results r JOIN Orders o ON r.order_id = o.order_id\
+                            WHERE o.patient_id = %s; "
+                    if vaildateSQL(str(id), request.remote_addr):
+                        return jsonify("possiable injection detected"), 200
+                    cursor.execute(sql, (id,))
+                elif dbUser == 'LS':
+                    cursor.execute("SELECT * FROM Results")
+                else:
+                    cursor.execute("SELECT result_id, order_id, report_url FROM Results")
+                results = cursor.fetchall()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify(results), 200
 
 @app.route('/api/updateResult', methods=['POST'])
@@ -239,17 +250,22 @@ def updateResult():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)"
-            if vaildateSQL(str(order_id)+ str(report_url) + str(interpretation)+ str(name), request.remote_addr):
-                return jsonify("prossible injection!"), 200
-            cursor.execute(sql, (order_id, report_url, interpretation, name))
-            conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "INSERT INTO Results (order_id, report_url, interpretation, reporting_pathologist) VALUES (%s, %s, %s, %s)"
+                if vaildateSQL(str(order_id)+ str(report_url) + str(interpretation)+ str(name), request.remote_addr):
+                    return jsonify("prossible injection!"), 200
+                cursor.execute(sql, (order_id, report_url, interpretation, name))
+                conn.commit()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
+    
     return jsonify("updated!"), 200
 
 @app.route('/api/getOrder', methods=['POST'])
@@ -264,19 +280,24 @@ def getOrder():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "SELECT O.order_id, O.order_date, T.name AS test_name, O.ordering_physician, O.status \
-                    FROM Orders AS O JOIN Tests_Catalog AS T ON O.test_id = T.test_id \
-                    WHERE O.patient_id = %s"
-            if vaildateSQL(str(id), request.remote_addr):
-                jsonify("possible injection"), 200
-            cursor.execute(sql, (id,))
-            results = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "SELECT O.order_id, O.order_date, T.name AS test_name, O.ordering_physician, O.status \
+                        FROM Orders AS O JOIN Tests_Catalog AS T ON O.test_id = T.test_id \
+                        WHERE O.patient_id = %s"
+                if vaildateSQL(str(id), request.remote_addr):
+                    jsonify("possible injection"), 200
+                cursor.execute(sql, (id,))
+                results = cursor.fetchall()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
+    
     return jsonify(results), 200
 
 @app.route('/api/getBills', methods=['POST'])
@@ -291,22 +312,26 @@ def getBills():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            if dbUser == 'PA':
-                sql = "SELECT b.bill_id, o.order_id, b.billed_amount, b.payment_status, b.insurance_claim_status\
-                        FROM Billing b INNER JOIN Orders o ON b.order_id = o.order_id\
-                        WHERE o.patient_id = %s"
-                if vaildateSQL(str(id), request.remote_addr):
-                    jsonify("possible injection"), 200
-                cursor.execute(sql, (id,))
-            else:
-                cursor.execute("SELECT * FROM Billing")
-            results = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                if dbUser == 'PA':
+                    sql = "SELECT b.bill_id, o.order_id, b.billed_amount, b.payment_status, b.insurance_claim_status\
+                            FROM Billing b INNER JOIN Orders o ON b.order_id = o.order_id\
+                            WHERE o.patient_id = %s"
+                    if vaildateSQL(str(id), request.remote_addr):
+                        jsonify("possible injection"), 200
+                    cursor.execute(sql, (id,))
+                else:
+                    cursor.execute("SELECT * FROM Billing")
+                results = cursor.fetchall()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify(results), 200
 
 @app.route('/api/updateBills', methods=['POST'])
@@ -324,20 +349,24 @@ def updateBills():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "UPDATE Billing SET billed_amount = %s,\
-                    payment_status = %s,\
-                    insurance_claim_status = %s\
-                    WHERE bill_id = %s;"
-            if vaildateSQL(str(bill_id)+ str(billed_amount) + str(payment_status)+ str(insurance_claim_status), request.remote_addr):
-                return jsonify("prossible injection!"), 200
-            cursor.execute(sql, (billed_amount, payment_status, insurance_claim_status, bill_id))
-            conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "UPDATE Billing SET billed_amount = %s,\
+                        payment_status = %s,\
+                        insurance_claim_status = %s\
+                        WHERE bill_id = %s;"
+                if vaildateSQL(str(bill_id)+ str(billed_amount) + str(payment_status)+ str(insurance_claim_status), request.remote_addr):
+                    return jsonify("prossible injection!"), 200
+                cursor.execute(sql, (billed_amount, payment_status, insurance_claim_status, bill_id))
+                conn.commit()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify("updated!"), 200
 
 @app.route('/api/getAppointments', methods=['POST'])
@@ -351,15 +380,19 @@ def getAppointments():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "SELECT * from Appointments"
-            cursor.execute(sql)
-            results = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "SELECT * from Appointments"
+                cursor.execute(sql)
+                results = cursor.fetchall()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify(results), 200
 
 @app.route('/api/updateAppointments', methods=['POST'])
@@ -374,21 +407,25 @@ def updateAppointments():
     isVaildRequest = checkpassword(name, password)
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
-
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        dbUser, dbPW = getDBCredByRole(isVaildRequest)
-        conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "INSERT INTO Appointments (patient_id, appointment_date) VALUES (%s, %s)"
-            if vaildateSQL(str(patient_id)+ str(appointment_date), request.remote_addr):
-                return jsonify("prossible injection!"), 200
-            date_object = datetime.strptime(appointment_date, "%Y-%m-%d").date()
-            datetime_object = datetime.combine(date_object, datetime.min.time())
-            date = datetime_object.strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute(sql, (patient_id, date))
-            conn.commit()
-    conn.close()
+    
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            dbUser, dbPW = getDBCredByRole(isVaildRequest)
+            conn.cmd_change_user(username=dbUser, password=dbPW, database='myDb')
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "INSERT INTO Appointments (patient_id, appointment_date) VALUES (%s, %s)"
+                if vaildateSQL(str(patient_id)+ str(appointment_date), request.remote_addr):
+                    return jsonify("prossible injection!"), 200
+                date_object = datetime.strptime(appointment_date, "%Y-%m-%d").date()
+                datetime_object = datetime.combine(date_object, datetime.min.time())
+                date = datetime_object.strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute(sql, (patient_id, date))
+                conn.commit()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify("updated!"), 200
 
 @app.route('/api/getLog', methods=['POST'])
@@ -402,13 +439,17 @@ def getLog():
     if isVaildRequest['isvalid'] == False:
         return isVaildRequest, 200
 
-    conn = get_db_connection()
-    if conn and conn.is_connected():
-        with conn.cursor(dictionary=True) as cursor:
-            sql = "SELECT * from SuspiciousLog"
-            cursor.execute(sql)
-            results = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            with conn.cursor(dictionary=True) as cursor:
+                sql = "SELECT * from SuspiciousLog"
+                cursor.execute(sql)
+                results = cursor.fetchall()
+        conn.close()
+    except mysql.connector.Error as err:
+        writeErrorLog("MySQL error: {}".format(err), request.remote_addr)
+        return jsonify("Error!"), 200
     return jsonify(results), 200
 
 if __name__ == "__main__":
