@@ -117,7 +117,7 @@ INSERT INTO Staff (name, role, contact_information, username, pwHash) VALUES
 ('Admin', 'admin', AES_ENCRYPT('admin@example.com', @staff_key, @init_vector, "hkdf"), 'admin', 'pbkdf2:sha256:600000$2GQOX8fIBMPODxuL$237b5461860bcc8cee64b11e49f3b54eb9d0e5b4116b108e2765ffce0f593753');
 
 INSERT INTO SuspiciousLog (log_date, log_info, send_from) VALUES
-('2023-11-25 09:00:00', '--select * from Staff;', '192.168.1.2', );
+('2023-11-25 09:00:00', '--select * from Staff;', '192.168.1.2');
 
 -- DROP FUNCTION IF EXISTS F_AES_DECRYPT
 -- CREATE FUNCTION F_AES_DECRYPT(PID INT) RETURNS VARCHAR
