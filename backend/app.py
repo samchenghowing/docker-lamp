@@ -48,6 +48,8 @@ def is_inappropriate_access(query_string):
         return True
     if "create" in query_string:
         return True
+    if "1==1" in query_string:
+        return True
     return False
 
 def vaildateSQL(query_string, ipaddr):
