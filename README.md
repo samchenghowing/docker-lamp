@@ -16,6 +16,7 @@ Open flask backend at [http://localhost:15000](http://localhost:15000).
 
 Open web browser to look at the vue frontend at [http://localhost:8080](http://localhost:8080)
 
+After visited the http://localhost:8080, he can login via different accounts below
 sample accounts:
 Patients:
 'john_doe', 'password123'
